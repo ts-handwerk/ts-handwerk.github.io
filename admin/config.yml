@@ -1,0 +1,671 @@
+# yaml-language-server: $schema=https://unpkg.com/@sveltia/cms@0.256.0/schema/sveltia-cms.json
+#
+# Sveltia CMS configuration for ts-handwerk.ch (served at /admin/).
+# Docs: https://sveltiacms.app/en/docs
+#
+# The CMS commits to the private source repository ts-handwerk/website. The
+# Zola site lives in the folder site/ of that repository, so every path below
+# is relative to the repository root and starts with "site/".
+#
+# Field names must match the templates in site/templates/. When you add or
+# rename a field here, update the template that reads it (and vice versa).
+# Section files (_index.md) only accept title, description, sort_by, template,
+# page_template, extra and a few more Zola keys: never add other top-level
+# fields to them, or the build fails.
+
+backend:
+  name: github
+  repo: ts-handwerk/website
+  branch: main
+  # Own OAuth server (Rust), see crates/server. Login: https://api.ts-handwerk.ch/auth
+  base_url: https://api.ts-handwerk.ch
+  auth_endpoint: auth
+  commit_messages:
+    create: "Neu: {{collection}} «{{slug}}»"
+    update: "Geändert: {{collection}} «{{slug}}»"
+    delete: "Gelöscht: {{collection}} «{{slug}}»"
+    uploadMedia: "Bild hochgeladen: {{path}}"
+    deleteMedia: "Bild gelöscht: {{path}}"
+
+app_title: "TS Handwerk & Unterhalt - Inhalte bearbeiten"
+logo:
+  src: /favicon.svg
+site_url: https://ts-handwerk.ch
+display_url: https://ts-handwerk.ch
+
+# Global images (hero image etc.). Project and portrait images are stored next
+# to their page instead (see media_folder of those collections/files).
+media_folder: site/static/images
+public_folder: /images
+
+# Leave out optional fields that are empty instead of writing "" (an empty
+# date string, for example, would break the Zola build). Templates treat a
+# missing key like an empty one.
+output:
+  omit_empty_optional_fields: true
+
+# URL-friendly file names: "Küche Müller" -> "kuche-muller".
+slug:
+  encoding: ascii
+  clean_accents: true
+  sanitize_replacement: "-"
+
+collections:
+  # -------------------------------------------------------------------------
+  # Projects: one folder per project (page bundle) with index.md and images.
+  # -------------------------------------------------------------------------
+  - name: projekte
+    label: Projekte
+    label_singular: Projekt
+    description: >-
+      Ihre Referenzprojekte. Die drei neusten erscheinen auf der Startseite.
+      Bilder werden direkt beim Projekt gespeichert.
+    icon: carpenter
+    folder: site/content/projekte
+    path: "{{slug}}/index"
+    extension: md
+    format: toml-frontmatter
+    create: true
+    delete: true
+    slug: "{{title}}"
+    # Entry-relative media: images live next to index.md and are referenced
+    # by their plain file name (e.g. cover = "cover.jpg").
+    media_folder: ""
+    public_folder: ""
+    preview_path: "projekte/{{slug}}/"
+    summary: "{{title}} · {{extra.location}}"
+    thumbnail: extra.cover
+    sortable_fields:
+      fields: [date, title, extra.category]
+      default:
+        field: date
+        direction: descending
+    view_groups:
+      groups:
+        - name: kategorie
+          label: Kategorie
+          field: extra.category
+    fields:
+      - name: title
+        label: Titel
+        widget: string
+        hint: Kurz und konkret, z. B. «Esstisch aus Eiche».
+      - name: date
+        label: Fertiggestellt am
+        widget: datetime
+        type: date
+        format: YYYY-MM-DD
+        default: "{{now}}"
+        hint: Die Projekte werden nach diesem Datum sortiert (neustes zuerst).
+      - name: description
+        label: Kurzbeschreibung
+        widget: text
+        hint: Ein bis zwei Sätze. Erscheint unter dem Titel und in Suchmaschinen.
+      - name: extra
+        label: Details
+        widget: object
+        collapsed: false
+        fields:
+          - name: category
+            label: Kategorie
+            widget: select
+            options:
+              - Möbel
+              - Küche
+              - Innenausbau
+              - Treppen
+              - Fenster und Türen
+              - Aussenbereich
+              - Reparaturen
+          - name: location
+            label: Ort
+            widget: string
+            required: false
+            hint: Gemeinde oder Quartier, z. B. «Winterthur-Seen». Keine genaue Adresse der Kundschaft.
+          - name: cover
+            label: Titelbild
+            widget: image
+            hint: Querformat, mindestens 1600 Pixel breit. Wird in der Übersicht und oben auf der Projektseite gezeigt.
+          - name: cover_alt
+            label: Bildbeschreibung Titelbild
+            widget: string
+            hint: Was ist auf dem Bild zu sehen? Wichtig für blinde Menschen und Suchmaschinen.
+          - name: gallery
+            label: Weitere Bilder
+            label_singular: Bild
+            widget: list
+            required: false
+            collapsed: true
+            summary: "{{fields.alt}}"
+            hint: Zwei bis sechs Bilder sind ideal. Die Reihenfolge lässt sich per Drag-and-drop ändern.
+            fields:
+              - name: image
+                label: Bild
+                widget: image
+              - name: alt
+                label: Bildbeschreibung
+                widget: string
+                hint: Was ist auf dem Bild zu sehen?
+      - name: body
+        label: Projektbeschreibung
+        widget: markdown
+        required: false
+        hint: Ausgangslage, Umsetzung, Material. Zwischentitel und Aufzählungen machen den Text gut lesbar.
+
+  # -------------------------------------------------------------------------
+  # Pages
+  # -------------------------------------------------------------------------
+  - name: seiten
+    label: Seiten
+    label_singular: Seite
+    description: Texte der einzelnen Seiten.
+    icon: article
+    files:
+      - name: startseite
+        label: Startseite
+        icon: home
+        file: site/content/_index.md
+        format: toml-frontmatter
+        preview_path: ""
+        fields:
+          - name: title
+            label: Seitentitel (Browser-Tab)
+            widget: string
+            hint: Erscheint im Browser-Tab und in Google, z. B. «Schreinerei in Winterthur».
+          - name: description
+            label: Beschreibung für Suchmaschinen
+            widget: text
+            hint: Ein bis zwei Sätze, höchstens etwa 160 Zeichen.
+          - name: extra
+            label: Inhalte
+            widget: object
+            collapsed: false
+            fields:
+              - name: hero_title
+                label: Grosse Überschrift
+                widget: string
+              - name: hero_text
+                label: Text unter der Überschrift
+                widget: text
+              - name: hero_image
+                label: Titelbild
+                widget: image
+                hint: Breites Querformat, mindestens 1920 Pixel breit. Der Text wird über das Bild gelegt; ruhige Bilder eignen sich am besten.
+              - name: hero_image_alt
+                label: Bildbeschreibung Titelbild
+                widget: string
+                hint: Was ist auf dem Bild zu sehen?
+              - name: intro
+                label: Einleitung
+                widget: markdown
+                hint: Kurze Vorstellung unter dem Titelbild.
+              - name: services
+                label: Leistungen
+                label_singular: Leistung
+                widget: list
+                summary: "{{fields.title}}"
+                fields:
+                  - name: title
+                    label: Titel
+                    widget: string
+                  - name: text
+                    label: Beschreibung
+                    widget: text
+                    required: false
+              - name: cta_title
+                label: Aufruf unten - Titel
+                widget: string
+                required: false
+                hint: Z. B. «Haben Sie ein Projekt im Kopf?»
+              - name: cta_text
+                label: Aufruf unten - Text
+                widget: text
+                required: false
+
+      - name: ueber_mich
+        label: Über mich
+        icon: person
+        file: site/content/ueber-mich/index.md
+        format: toml-frontmatter
+        preview_path: ueber-mich/
+        # Portrait is stored next to index.md (page bundle).
+        media_folder: ""
+        public_folder: ""
+        fields:
+          - name: title
+            label: Titel
+            widget: string
+          - name: description
+            label: Beschreibung für Suchmaschinen
+            widget: text
+          - name: template
+            widget: hidden
+            default: about.html
+          - name: extra
+            label: Inhalte
+            widget: object
+            collapsed: false
+            fields:
+              - name: lead
+                label: Einleitungssatz
+                widget: text
+                required: false
+              - name: portrait
+                label: Porträtfoto
+                widget: image
+                required: false
+                hint: Hochformat (4:5), mindestens 800 Pixel breit.
+              - name: portrait_alt
+                label: Bildbeschreibung Porträt
+                widget: string
+                required: false
+                hint: Z. B. «Thomas Sutter in seiner Werkstatt».
+              - name: facts
+                label: Auf einen Blick
+                label_singular: Angabe
+                widget: list
+                required: false
+                summary: "{{fields.label}}: {{fields.value}}"
+                hint: Z. B. Ausbildung, Erfahrung seit, Spezialgebiete.
+                fields:
+                  - name: label
+                    label: Bezeichnung
+                    widget: string
+                  - name: value
+                    label: Wert
+                    widget: string
+              - name: values
+                label: Darauf können Sie zählen
+                label_singular: Punkt
+                widget: list
+                required: false
+                summary: "{{fields.title}}"
+                fields:
+                  - name: title
+                    label: Titel
+                    widget: string
+                  - name: text
+                    label: Text
+                    widget: text
+          - name: body
+            label: Meine Geschichte
+            widget: markdown
+
+      - name: projekte_uebersicht
+        label: Projekte (Übersichtsseite)
+        icon: photo_library
+        file: site/content/projekte/_index.md
+        format: toml-frontmatter
+        preview_path: projekte/
+        fields:
+          - name: title
+            label: Titel
+            widget: string
+          - name: description
+            label: Beschreibung für Suchmaschinen
+            widget: text
+          # Technical settings, kept as they are.
+          - name: sort_by
+            widget: hidden
+            default: date
+          - name: template
+            widget: hidden
+            default: projects.html
+          - name: page_template
+            widget: hidden
+            default: project.html
+          - name: body
+            label: Einleitung
+            widget: markdown
+            required: false
+
+      - name: bewertungen_seite
+        label: Bewertungen (Seite)
+        icon: star
+        file: site/content/bewertungen.md
+        format: toml-frontmatter
+        preview_path: bewertungen/
+        fields:
+          - name: title
+            label: Titel
+            widget: string
+            hint: 'Die Bewertungen selbst werden unter «Einstellungen > Bewertungen» erfasst.'
+          - name: description
+            label: Beschreibung für Suchmaschinen
+            widget: text
+          - name: template
+            widget: hidden
+            default: reviews.html
+          - name: body
+            label: Einleitung
+            widget: markdown
+            required: false
+
+      - name: kontakt
+        label: Kontakt
+        icon: mail
+        file: site/content/kontakt/_index.md
+        format: toml-frontmatter
+        preview_path: kontakt/
+        fields:
+          - name: title
+            label: Titel
+            widget: string
+            hint: 'Telefon, E-Mail, Adresse und Erreichbarkeit stehen unter «Einstellungen > Firmenangaben».'
+          - name: description
+            label: Beschreibung für Suchmaschinen
+            widget: text
+          - name: template
+            widget: hidden
+            default: contact.html
+          - name: page_template
+            widget: hidden
+            default: message.html
+          - name: body
+            label: Einleitung
+            widget: markdown
+            required: false
+
+      - name: kontakt_danke
+        label: Kontakt - Danke-Seite
+        icon: check_circle
+        file: site/content/kontakt/danke.md
+        format: toml-frontmatter
+        preview_path: kontakt/danke/
+        fields:
+          - name: title
+            label: Titel
+            widget: string
+            hint: Erscheint, nachdem jemand das Kontaktformular abgeschickt hat.
+          - name: description
+            label: Kurzbeschreibung
+            widget: string
+          - name: extra
+            widget: object
+            label: Technisch
+            collapsed: true
+            fields:
+              - name: noindex
+                widget: hidden
+                default: true
+              - name: status
+                widget: hidden
+                default: success
+          - name: body
+            label: Text
+            widget: markdown
+
+      - name: kontakt_fehler
+        label: Kontakt - Fehler-Seite
+        icon: error
+        file: site/content/kontakt/fehler.md
+        format: toml-frontmatter
+        preview_path: kontakt/fehler/
+        fields:
+          - name: title
+            label: Titel
+            widget: string
+            hint: Erscheint, wenn das Kontaktformular nicht gesendet werden konnte. Bitte auf Telefon und E-Mail verweisen.
+          - name: description
+            label: Kurzbeschreibung
+            widget: string
+          - name: extra
+            widget: object
+            label: Technisch
+            collapsed: true
+            fields:
+              - name: noindex
+                widget: hidden
+                default: true
+              - name: status
+                widget: hidden
+                default: error
+          - name: body
+            label: Text
+            widget: markdown
+
+      - name: impressum
+        label: Impressum
+        icon: gavel
+        file: site/content/impressum.md
+        format: toml-frontmatter
+        preview_path: impressum/
+        fields:
+          - name: title
+            label: Titel
+            widget: string
+            hint: 'VORLAGE: Rechtstext vor der Veröffentlichung prüfen (lassen). Name, Adresse, Kontakt und UID werden automatisch aus den Firmenangaben übernommen.'
+          - name: description
+            label: Beschreibung für Suchmaschinen
+            widget: text
+          - name: updated
+            label: Stand
+            widget: datetime
+            type: date
+            format: YYYY-MM-DD
+            required: false
+            hint: Datum der letzten inhaltlichen Änderung.
+          - name: extra
+            label: Firmenangaben-Block
+            widget: object
+            collapsed: true
+            fields:
+              - name: business_details
+                widget: hidden
+                default: true
+              - name: business_details_title
+                label: Überschrift über den Firmenangaben
+                widget: string
+                required: false
+          - name: body
+            label: Text
+            widget: markdown
+
+      - name: datenschutz
+        label: Datenschutzerklärung
+        icon: shield
+        file: site/content/datenschutz.md
+        format: toml-frontmatter
+        preview_path: datenschutz/
+        fields:
+          - name: title
+            label: Titel
+            widget: string
+            hint: VORLAGE nach dem revidierten Datenschutzgesetz (DSG). Vor der Veröffentlichung prüfen (lassen), besonders Server-Standort, E-Mail-Anbieter und Aufbewahrungsfristen. Bei neuen Diensten (z. B. Karte, Statistik) anpassen.
+          - name: description
+            label: Beschreibung für Suchmaschinen
+            widget: text
+          - name: updated
+            label: Stand
+            widget: datetime
+            type: date
+            format: YYYY-MM-DD
+            required: false
+            hint: Datum der letzten inhaltlichen Änderung.
+          - name: extra
+            label: Firmenangaben-Block
+            widget: object
+            collapsed: true
+            fields:
+              - name: business_details
+                widget: hidden
+                default: true
+              - name: business_details_title
+                label: Überschrift über den Firmenangaben
+                widget: string
+                required: false
+          - name: body
+            label: Text
+            widget: markdown
+
+  # -------------------------------------------------------------------------
+  # Settings: business data and reviews (TOML files in site/data/)
+  # -------------------------------------------------------------------------
+  - name: einstellungen
+    label: Einstellungen
+    description: Angaben, die auf der ganzen Website verwendet werden.
+    icon: settings
+    editor:
+      preview: false
+    files:
+      - name: firmenangaben
+        label: Firmenangaben
+        icon: store
+        file: site/data/business.toml
+        format: toml
+        fields:
+          - name: name
+            label: Firmenname
+            widget: string
+            hint: Diese Angaben erscheinen in Kopf- und Fusszeile, auf der Kontaktseite, im Impressum und in den Daten für Google. Leere Felder werden auf der Website ausgeblendet.
+          - name: owner
+            label: Inhaber
+            widget: string
+          - name: profession
+            label: Beruf
+            widget: string
+            required: false
+            hint: Z. B. «Schreiner EFZ». Erscheint unter dem Logo.
+          - name: tagline
+            label: Slogan
+            widget: string
+            required: false
+            hint: Kurzer Satz über der grossen Überschrift auf der Startseite.
+          - name: phone
+            label: Telefon
+            widget: string
+            hint: Im Schweizer Format, z. B. «+41 79 123 45 67».
+            pattern:
+              - '^\+?[0-9 ]{9,20}$'
+              - Bitte nur Ziffern, Leerzeichen und ein führendes «+» verwenden.
+          - name: email
+            label: E-Mail
+            widget: string
+            pattern:
+              - '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+              - Bitte eine gültige E-Mail-Adresse eingeben.
+          - name: street
+            label: Strasse und Nr.
+            widget: string
+          - name: zip
+            label: PLZ
+            widget: string
+            pattern:
+              - '^[0-9]{4}$'
+              - Vierstellige Postleitzahl.
+          - name: city
+            label: Ort
+            widget: string
+          - name: canton
+            label: Kanton
+            widget: string
+            required: false
+            hint: Kürzel, z. B. «ZH».
+          - name: service_area
+            label: Einsatzgebiet
+            widget: text
+            required: false
+            hint: Z. B. «Winterthur und Umgebung, Zürcher Weinland».
+          - name: uid
+            label: UID-Nummer
+            widget: string
+            required: false
+            hint: Unternehmens-Identifikationsnummer, z. B. «CHE-123.456.789». Erscheint im Impressum.
+            pattern:
+              - '^(CHE-[0-9]{3}\.[0-9]{3}\.[0-9]{3})?$'
+              - Format CHE-123.456.789
+          - name: google_reviews_url
+            label: Link zu den Google-Bewertungen
+            widget: string
+            required: false
+            hint: Link auf Ihr Google-Unternehmensprofil. Leer lassen, um den Knopf auszublenden.
+          - name: google_review_write_url
+            label: Link «Bewertung schreiben»
+            widget: string
+            required: false
+            hint: Den Link finden Sie im Google-Unternehmensprofil unter «Bewertungen anfordern». Leer lassen, um den Knopf auszublenden.
+          - name: opening_hours
+            label: Erreichbarkeit
+            label_singular: Zeile
+            widget: list
+            required: false
+            summary: "{{fields.days}}: {{fields.hours}}"
+            fields:
+              - name: days
+                label: Tage
+                widget: string
+                hint: Z. B. «Montag bis Freitag».
+              - name: hours
+                label: Zeiten
+                widget: string
+                hint: Z. B. «07:30 - 12:00 und 13:30 - 17:30».
+          - name: social
+            label: Social Media
+            widget: object
+            collapsed: true
+            hint: Vollständige Links (https://...). Leere Felder werden ausgeblendet.
+            fields:
+              - name: instagram
+                label: Instagram
+                widget: string
+                required: false
+              - name: facebook
+                label: Facebook
+                widget: string
+                required: false
+              - name: linkedin
+                label: LinkedIn
+                widget: string
+                required: false
+
+      - name: bewertungen
+        label: Bewertungen
+        icon: reviews
+        file: site/data/reviews.toml
+        format: toml
+        fields:
+          - name: average
+            label: Durchschnitt
+            widget: number
+            value_type: float
+            min: 1
+            max: 5
+            step: 0.1
+            hint: 'Ausgewählte Google-Bewertungen, von Hand übernommen (die Website lädt nichts von Google). Die mitgelieferten Bewertungen sind BEISPIELE und müssen vor der Veröffentlichung durch echte ersetzt oder gelöscht werden. Durchschnittliche Bewertung laut Google, z. B. 4.9.'
+          - name: count
+            label: Anzahl Bewertungen
+            widget: number
+            value_type: int
+            min: 0
+            hint: Gesamtzahl der Bewertungen auf Google. Bei 0 wird kein Durchschnitt angezeigt.
+          - name: reviews
+            label: Bewertungen
+            label_singular: Bewertung
+            widget: list
+            required: false
+            summary: "{{fields.author}} ({{fields.rating}} Sterne)"
+            hint: Die drei neusten erscheinen auf der Startseite.
+            fields:
+              - name: author
+                label: Name
+                widget: string
+                hint: Nur mit Einverständnis voll ausschreiben, sonst z. B. «Monika B.».
+              - name: rating
+                label: Sterne
+                widget: number
+                value_type: int
+                min: 1
+                max: 5
+                default: 5
+              - name: date
+                label: Datum
+                widget: datetime
+                type: date
+                format: YYYY-MM-DD
+              - name: text
+                label: Text
+                widget: text
+              - name: source
+                label: Quelle
+                widget: string
+                default: Google
